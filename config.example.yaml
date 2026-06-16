@@ -1,0 +1,36 @@
+# Example Noteman configuration file
+# Copy this to ~/.noteman/config.yaml or set NOTEMAN_CONFIG
+
+# Data directory for storing notes
+data_dir: ~/.noteman/data
+
+# Default editor for creating notes
+editor: vim
+
+# Log level: debug, info, warning, error, critical
+log_level: info
+
+# Storage configuration
+storage:
+  # Format: json (yaml supported if PyYAML is installed)
+  format: json
+  # Pretty print JSON output
+  pretty_print: true
+
+# Display configuration
+display:
+  # Use colored output
+  color: true
+  # Use pager for long output
+  pager: false
+  # Date format (strftime format)
+  date_format: "%Y-%m-%d %H:%M:%S"
+
+# Search configuration
+search:
+  # Case-sensitive search by default
+  case_sensitive: false
+  # Include note content in search
+  include_content: true
+  # Include tags in search
+  include_tags: true

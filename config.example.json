@@ -1,0 +1,1 @@
+{'data_dir': '~/.noteman/data', 'editor': 'vim', 'log_level': 'info', 'storage': {'format': 'json', 'pretty_print': True}, 'display': {'color': True, 'pager': False, 'date_format': '%Y-%m-%d %H:%M:%S'}, 'search': {'case_sensitive': False, 'include_content': True, 'include_tags': True}}
