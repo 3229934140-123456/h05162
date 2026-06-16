@@ -1,4 +1,3 @@
-"""
 """Setup script for Noteman."""
 from setuptools import setup, find_packages
 
@@ -7,12 +6,9 @@ setup(
     version="0.1.0",
     description="A Git-style note management CLI tool",
     author="Noteman Team",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.7",
-    install_requires=[
-        # PyYAML is optional for YAML config support
-        "PyYAML>=6.0; extra == 'yaml'",
-    ],
+    install_requires=[],
     extras_require={
         "yaml": ["PyYAML>=6.0"],
         "dev": [

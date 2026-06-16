@@ -76,35 +76,40 @@ class Dispatcher:
     def _auto_import_commands(self) -> None:
         """Auto-import all command modules to trigger registration.
 
-        This imports all modules in the commands package, which triggers
-        the @register_command decorator to register each command class
-        with the CommandRegistry.
+        This automatically discovers and imports all modules in the
+        commands package, which triggers the @register_command decorator
+        to register each command class with the CommandRegistry.
 
-        To add a new command:
-            1. Create a new file in noteman/commands/
-            2. Define a Command subclass with @register_command decorator
-            3. Add the module name to _COMMAND_MODULES below
+        TRUE PLUGIN-STYLE DISCOVERY:
+            Simply create a new file in noteman/commands/ with a Command
+            subclass decorated with @register_command. The next time you
+            run 'noteman --help', the command will be automatically
+            discovered and available. NO MODIFICATIONS TO THIS FILE NEEDED!
 
-        No changes to the dispatcher are needed!
+        How it works:
+            1. Automatically scans noteman/commands/ directory
+            2. Finds all .py files (excluding __init__.py and base.py)
+            3. Dynamically imports each module
+            4. @register_command decorator triggers registration
         """
-        _COMMAND_MODULES = [
-            "noteman.commands.add",
-            "noteman.commands.list_cmd",
-            "noteman.commands.show",
-            "noteman.commands.delete",
-            "noteman.commands.search",
-            "noteman.commands.tag",
-            "noteman.commands.init_cmd",
-            "noteman.commands.config_cmd",
-        ]
-
         import importlib
+        import pkgutil
+        import noteman.commands as commands_package
 
-        for module_name in _COMMAND_MODULES:
+        commands_path = commands_package.__path__
+
+        for module_info in pkgutil.iter_modules(commands_path):
+            module_name = f"noteman.commands.{module_info.name}"
+
+            if module_info.name in ("__init__", "base"):
+                continue
+
             try:
                 importlib.import_module(module_name)
             except ImportError as e:
                 print(f"Warning: Could not import command module {module_name}: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"Warning: Error loading command module {module_name}: {e}", file=sys.stderr)
 
     def _init(self, cli_args: Dict[str, Any]) -> None:
         """Initialize config and store.
@@ -122,17 +127,31 @@ class Dispatcher:
             pretty_print=self.config["storage"]["pretty_print"],
         )
 
-    def _is_write_command(self, command_name: Optional[str]) -> bool:
+    def _is_write_command(self, command_name: Optional[str], command: Optional[Command] = None) -> bool:
         """Determine if a command needs write access to storage.
 
         Args:
-            command_name: Name of the command.
+            command_name: Name of the command (may be an alias).
+            command: The command instance (used to check aliases).
 
         Returns:
             True if the command needs write access, False otherwise.
         """
         write_commands = {"add", "delete", "tag", "init"}
-        return command_name in write_commands
+
+        if command_name in write_commands:
+            return True
+
+        if command is not None:
+            actual_name = getattr(command, "name", None)
+            if actual_name in write_commands:
+                return True
+
+            aliases = getattr(command, "aliases", [])
+            if command_name in aliases and actual_name in write_commands:
+                return True
+
+        return False
 
     def dispatch(self, argv: Optional[list] = None) -> int:
         """Dispatch a command based on command line arguments.
@@ -189,9 +208,10 @@ class Dispatcher:
                 pretty_print=self.config["storage"]["pretty_print"],
             )
 
-            needs_write = self._is_write_command(command_name)
+            needs_write = self._is_write_command(command_name, command)
 
-            if command_name == "init":
+            actual_command_name = getattr(command, "name", command_name)
+            if actual_command_name == "init":
                 exit_code = command.execute(parsed_args, self.config, self.store)
             else:
                 with self.store.transaction(write=needs_write):

@@ -171,6 +171,17 @@ class NoteStore:
     def transaction(self, write: bool = False):
         """Thread-safe transaction context manager.
 
+        For write transactions:
+            1. Acquire exclusive cross-process lock first
+            2. Reload the latest data from disk (critical for concurrency!)
+            3. Execute the transaction body
+            4. Flush changes to disk
+            5. Release lock
+
+        This ensures that even if two processes are writing concurrently,
+        each one reads the latest data before making modifications,
+        preventing lost updates.
+
         Args:
             write: Whether this transaction needs write access.
 
@@ -180,6 +191,8 @@ class NoteStore:
         with self._lock:
             with self._cross_process_lock("w" if write else "r"):
                 try:
+                    if write:
+                        self._cache = self._read_data()
                     yield self
                     if write:
                         self._flush()
